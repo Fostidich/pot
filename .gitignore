@@ -1,0 +1,12 @@
+# Zig stuff
+.zig-cache/
+zig-out/
+
+# Misc
+**/.DS_Store
+
+# IDEs
+**/.idea
+**/.vscode
+**/.vim
+
