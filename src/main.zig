@@ -2,6 +2,7 @@ const std = @import("std");
 const print = std.debug.print;
 
 const files = @import("files.zig");
+const processes = @import("processes.zig");
 
 const Command = enum {
     unknown,
@@ -18,6 +19,7 @@ const version = "0.1";
 
 pub fn main() void {
     const allocator = std.heap.page_allocator;
+    files.init(allocator) catch |err| abort(err);
 
     // retrieve args
     const args = std.process.argsAlloc(allocator) catch |err| abort(err);
@@ -27,7 +29,7 @@ pub fn main() void {
     const command = if (args.len <= 1) Command.list else std.meta.stringToEnum(Command, args[1]) orelse .unknown;
 
     // create directories
-    files.createRequiredDir(allocator) catch |err| abort(err);
+    files.createRequiredDir() catch |err| abort(err);
 
     // switch commands
     switch (command) {
@@ -55,7 +57,7 @@ pub fn main() void {
         , .{version}),
         .add => commandWithName(args, files.addProgram),
         .delete => commandWithName(args, files.deleteProgram),
-        .start => {},
+        .start => commandWithName(args, processes.startProgram),
         .stop => {},
         .list => files.listPrograms() catch |err| abort(err),
     }
