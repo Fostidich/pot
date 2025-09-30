@@ -58,7 +58,7 @@ pub fn main() void {
         .add => commandWithName(args, files.addProgram),
         .delete => commandWithName(args, files.deleteProgram),
         .start => commandWithName(args, processes.startProgram),
-        .stop => {},
+        .stop => commandWithName(args, processes.stopProgram),
         .list => files.listPrograms() catch |err| abort(err),
     }
 }

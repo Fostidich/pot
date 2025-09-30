@@ -47,7 +47,7 @@ pub fn deleteProgram(name: []const u8) !void {
         },
         else => return err,
     };
-    print("Deleted\n", .{});
+    print("{s} deleted\n", .{name});
 }
 
 pub fn listPrograms() !void {
@@ -100,24 +100,13 @@ pub fn getActivePrograms(allocator: std.mem.Allocator) !std.StringHashMap(i32) {
 
         // parse and append to result
         const entry = parseActiveLine(line) catch continue;
-        try result.put(entry.name, entry.pid);
+        const key = try allocator.dupe(u8, entry.name);
+        const value = entry.pid;
+        try result.put(key, value);
     }
 
     // return owned
     return result;
-}
-
-fn parseActiveLine(line: []const u8) !ActiveWithId {
-    // parse pid and process name
-    const first_space = std.mem.indexOfScalar(u8, line, ' ') orelse {
-        return error.ActiveProcessParsingFailure;
-    };
-    const pid_str = line[0..first_space];
-    const pid = try std.fmt.parseInt(i32, pid_str, 10);
-    const name = line[first_space + 1 ..];
-
-    // build and return entry
-    return ActiveWithId{ .pid = pid, .name = name };
 }
 
 pub fn addProgramToActives(allocator: std.mem.Allocator, name: []const u8, pid: i32) !void {
@@ -151,6 +140,60 @@ pub fn addProgramToActives(allocator: std.mem.Allocator, name: []const u8, pid: 
     try w.flush();
 }
 
+pub fn overrideActivePrograms(allocator: std.mem.Allocator, active_procs: std.StringHashMap(i32)) !void {
+    // open file for overriding
+    var file = try std.fs.cwd().openFile(active_file, .{ .mode = .read_write });
+    defer file.close();
+    try file.setEndPos(0);
+
+    // prepare buffer
+    var buffer = try std.ArrayList(u8).initCapacity(allocator, 8);
+    defer buffer.deinit(allocator);
+
+    // prepare writer
+    var buf: [1024]u8 = undefined;
+    var writer = file.writer(&buf);
+    const w = &writer.interface;
+
+    // iterate over each entry for appending them
+    var it = active_procs.iterator();
+    while (it.next()) |entry| {
+        // empty line buffer
+        buffer.clearRetainingCapacity();
+
+        // get string version of pid
+        const pid_str = try std.fmt.allocPrint(allocator, "{}", .{entry.value_ptr.*});
+        defer allocator.free(pid_str);
+
+        // create line to append
+        try buffer.appendSlice(allocator, pid_str);
+        try buffer.appendSlice(allocator, " ");
+        try buffer.appendSlice(allocator, entry.key_ptr.*);
+        try buffer.appendSlice(allocator, "\n");
+        const line = try buffer.toOwnedSlice(allocator);
+        defer allocator.free(line);
+
+        // append line
+        try w.print("{s}", .{line});
+    }
+
+    // flush buffer
+    try w.flush();
+}
+
+fn parseActiveLine(line: []const u8) !ActiveWithId {
+    // parse pid and process name
+    const first_space = std.mem.indexOfScalar(u8, line, ' ') orelse {
+        return error.ActiveProcessParsingFailure;
+    };
+    const pid_str = line[0..first_space];
+    const pid = try std.fmt.parseInt(i32, pid_str, 10);
+    const name = line[first_space + 1 ..];
+
+    // build and return entry
+    return ActiveWithId{ .pid = pid, .name = name };
+}
+
 pub fn getScriptFilePath(allocator: std.mem.Allocator, filename: []const u8) ![]const u8 {
     // create var size buffer
     var path_buffer = try std.ArrayList(u8).initCapacity(allocator, 16);
@@ -178,25 +221,6 @@ pub inline fn createRequiredDir() !void {
     try std.fs.cwd().makePath(scripts_dir);
 }
 
-fn openEditor(allocator: std.mem.Allocator, editor_name: []const u8, file_path: []const u8) !bool {
-    // run editor command
-    const editor_command = &[_][]const u8{ editor_name, file_path };
-    var editor_process = std.process.Child.init(editor_command, allocator);
-    try editor_process.spawn();
-
-    // wait for it to finish
-    const result = editor_process.wait() catch |err| switch (err) {
-        error.FileNotFound => return false,
-        else => return err,
-    };
-
-    // print exit result
-    return switch (result) {
-        .Exited => |code| code == 0,
-        else => false,
-    };
-}
-
 fn expandHomePath(allocator: std.mem.Allocator, path: []const u8) ![]const u8 {
     // check that there actually is a tilde to expand at the start
     if (path.len == 0 or path[0] != '~') {
@@ -215,4 +239,23 @@ fn expandHomePath(allocator: std.mem.Allocator, path: []const u8) ![]const u8 {
 
     // return owned
     return path_buffer.toOwnedSlice(allocator);
+}
+
+fn openEditor(allocator: std.mem.Allocator, editor_name: []const u8, file_path: []const u8) !bool {
+    // run editor command
+    const editor_command = &[_][]const u8{ editor_name, file_path };
+    var editor_process = std.process.Child.init(editor_command, allocator);
+    try editor_process.spawn();
+
+    // wait for it to finish
+    const result = editor_process.wait() catch |err| switch (err) {
+        error.FileNotFound => return false,
+        else => return err,
+    };
+
+    // print exit result
+    return switch (result) {
+        .Exited => |code| code == 0,
+        else => false,
+    };
 }

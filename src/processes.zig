@@ -32,8 +32,29 @@ pub fn startProgram(name: []const u8) !void {
     if (pid == 0) {
         return;
     } else {
+        print("{s} started\n", .{name});
         try files.addProgramToActives(allocator, name, pid);
     }
+}
+
+pub fn stopProgram(name: []const u8) !void {
+    const allocator = std.heap.page_allocator;
+
+    // get process pid if active
+    var active_procs = try files.getActivePrograms(allocator);
+    defer active_procs.deinit();
+    const pid = active_procs.get(name) orelse {
+        print("{s} not active\n", .{name});
+        return;
+    };
+
+    // kill process session
+    try posix.kill(-pid, 9);
+    print("{s} stopped\n", .{name});
+
+    // remove from the active files
+    _ = active_procs.remove(name);
+    try files.overrideActivePrograms(allocator, active_procs);
 }
 
 fn spawnDetached(allocator: std.mem.Allocator, path: []const u8) !i32 {
