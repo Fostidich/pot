@@ -1,5 +1,9 @@
 # Pot
 
+## Overview
+
+Pot is a minimal, easy-to-use command-line tool for managing daemons background processes, inspired by systemd but designed to focus only on the most essential operations.
+
 ## Usage
 
 ### Add a program
@@ -31,4 +35,6 @@ pot stop "<name>"
 ```bash
 pot
 ```
+
+# Code written by Francesco Ostidich
 
