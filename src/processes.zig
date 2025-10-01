@@ -5,59 +5,7 @@ const builtin = @import("builtin");
 
 const files = @import("files.zig");
 
-pub fn startProgram(name: []const u8) !void {
-    const allocator = std.heap.page_allocator;
-
-    // get script file
-    const script_path = try files.getScriptFilePath(allocator, name);
-    defer allocator.free(script_path);
-    const file_exists = try files.checkFileExists(script_path);
-    if (!file_exists) {
-        print("{s} not found\n", .{name});
-        return;
-    }
-
-    // check not already active
-    var active_procs = try files.getActivePrograms(allocator);
-    defer active_procs.deinit();
-    if (active_procs.get(name)) |pid| {
-        print("{s} already active ({})\n", .{ name, pid });
-        return;
-    }
-
-    // fork and start process
-    const pid = try spawnDetached(allocator, script_path);
-
-    // return if child, store pid if parent
-    if (pid == 0) {
-        return;
-    } else {
-        print("{s} started\n", .{name});
-        try files.addProgramToActives(allocator, name, pid);
-    }
-}
-
-pub fn stopProgram(name: []const u8) !void {
-    const allocator = std.heap.page_allocator;
-
-    // get process pid if active
-    var active_procs = try files.getActivePrograms(allocator);
-    defer active_procs.deinit();
-    const pid = active_procs.get(name) orelse {
-        print("{s} not active\n", .{name});
-        return;
-    };
-
-    // kill process session
-    try posix.kill(-pid, 9);
-    print("{s} stopped\n", .{name});
-
-    // remove from the active files
-    _ = active_procs.remove(name);
-    try files.overrideActivePrograms(allocator, active_procs);
-}
-
-fn spawnDetached(allocator: std.mem.Allocator, path: []const u8) !i32 {
+pub fn spawnDetached(allocator: std.mem.Allocator, path: []const u8) !i32 {
     // fork process and make the parent return
     const pid = try posix.fork();
     if (pid != 0) {
@@ -89,4 +37,27 @@ fn spawnDetached(allocator: std.mem.Allocator, path: []const u8) !i32 {
 
     // should return 0 as child
     return pid;
+}
+
+pub fn killProcess(sess_id: i32) !void {
+    try posix.kill(sess_id, 9);
+}
+
+pub fn openEditor(allocator: std.mem.Allocator, editor_name: []const u8, file_path: []const u8) !bool {
+    // run editor command
+    const editor_command = &[_][]const u8{ editor_name, file_path };
+    var editor_process = std.process.Child.init(editor_command, allocator);
+    try editor_process.spawn();
+
+    // wait for it to finish
+    const result = editor_process.wait() catch |err| switch (err) {
+        error.FileNotFound => return false,
+        else => return err,
+    };
+
+    // print exit result
+    return switch (result) {
+        .Exited => |code| code == 0,
+        else => false,
+    };
 }
