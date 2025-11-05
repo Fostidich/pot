@@ -5,7 +5,7 @@ const files = @import("files.zig");
 const processes = @import("processes.zig");
 const actives = @import("actives.zig");
 
-pub fn addProgram(name: []const u8) !void {
+pub fn setProgram(name: []const u8) !void {
     const allocator = std.heap.page_allocator;
 
     // construct path string
@@ -71,6 +71,7 @@ pub fn listPrograms() !void {
     defer active_procs.deinit();
 
     // print entries if normal file
+    print("\n", .{});
     for (entries.items) |entry| {
         if (entry.kind == .file and entry.name[0] != '.') {
             if (active_procs.get(entry.name)) |pid| {
@@ -80,6 +81,7 @@ pub fn listPrograms() !void {
             }
         }
     }
+    print("\n", .{});
 }
 
 pub fn startProgram(name: []const u8) !void {

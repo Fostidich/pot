@@ -8,7 +8,7 @@ const Command = enum {
     unknown,
     help,
     version,
-    add,
+    set,
     delete,
     start,
     stop,
@@ -43,7 +43,7 @@ pub fn main() void {
             \\
             \\  pot help            Show this very panel
             \\  pot version         Show version
-            \\  pot add <name>      Add a new program
+            \\  pot set <name>      Set a new program
             \\  pot delete <name>   Delete a program
             \\  pot start <name>    Start a program
             \\  pot stop <name>     Stop a running program
@@ -55,7 +55,7 @@ pub fn main() void {
             \\Version: {s}
             \\
         , .{version}),
-        .add => commandWithName(args, commands.addProgram),
+        .set => commandWithName(args, commands.setProgram),
         .delete => commandWithName(args, commands.deleteProgram),
         .start => commandWithName(args, commands.startProgram),
         .stop => commandWithName(args, commands.stopProgram),

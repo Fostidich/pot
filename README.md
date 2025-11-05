@@ -6,10 +6,10 @@ Pot is a minimal, easy-to-use command-line tool for managing daemons (background
 
 ## Usage
 
-### Add a program
+### Set a program
 
 ```bash
-pot add "<name>"
+pot set "<name>"
 ```
 
 ### Delete a program
