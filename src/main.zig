@@ -15,7 +15,7 @@ const Command = enum {
     list,
 };
 
-const version = "0.1";
+const version = "1.1";
 
 pub fn main() void {
     const allocator = std.heap.page_allocator;

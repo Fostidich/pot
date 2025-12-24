@@ -71,17 +71,15 @@ pub fn listPrograms() !void {
     defer active_procs.deinit();
 
     // print entries if normal file
-    print("\n", .{});
     for (entries.items) |entry| {
         if (entry.kind == .file and entry.name[0] != '.') {
             if (active_procs.get(entry.name)) |pid| {
-                print("active: {s} ({})\n", .{ entry.name, pid });
+                print("\x1b[1;32m* {s} ({})\x1b[0m\n", .{ entry.name, pid });
             } else {
-                print("        {s}\n", .{entry.name});
+                print("- {s}\n", .{entry.name});
             }
         }
     }
-    print("\n", .{});
 }
 
 pub fn startProgram(name: []const u8) !void {

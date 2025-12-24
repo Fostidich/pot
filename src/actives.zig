@@ -21,22 +21,16 @@ pub fn getActivePrograms(allocator: std.mem.Allocator) !std.StringHashMap(i32) {
     const r = &reader.interface;
 
     // read line by line until end of file
-    while (true) {
-        // get line string
-        const line = r.takeDelimiterExclusive('\n') catch |err| switch (err) {
-            error.EndOfStream => break,
-            else => return err,
-        };
-
+    while (r.takeDelimiter('\n')) |line| {
         // parse and append to result
-        const entry = parseActiveLine(line) catch continue;
+        const l = line orelse return result;
+        const entry = parseActiveLine(l) catch continue;
         const key = try allocator.dupe(u8, entry.name);
         const value = entry.pid;
         try result.put(key, value);
+    } else |err| switch (err) {
+        else => return err,
     }
-
-    // return owned
-    return result;
 }
 
 pub fn addProgramToActives(allocator: std.mem.Allocator, name: []const u8, pid: i32) !void {
