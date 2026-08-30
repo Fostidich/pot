@@ -76,7 +76,7 @@ pub fn listPrograms() !void {
             if (active_procs.get(entry.name)) |pid| {
                 print("\x1b[1;32m* {s} ({})\x1b[0m\n", .{ entry.name, pid });
             } else {
-                print("- {s}\n", .{entry.name});
+                print("  {s}\n", .{entry.name});
             }
         }
     }
